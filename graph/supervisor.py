@@ -120,6 +120,15 @@ class RedTeamSupervisor:
             print(f"[Round {state['round_num']}] *** EXPLOIT STORED *** ELO: ",
                   f"ATT={new_att:.0f} DEF={new_def:.0f}")
 
+        from learning.fine_tune import DetectorFineTuner
+
+        # Every 50 rounds, trigger fine-tuning if we have enough exploits
+        if state['round_num'] % 50 == 0 and total >= 10:
+            print(f'[Round {state["round_num"]}] Starting fine-tuning on {total} exploits...')
+            tuner = DetectorFineTuner()
+            metrics = tuner.fine_tune()
+            print(f'Fine-tune complete. Eval accuracy: {metrics["eval_accuracy"]:.3f}')
+
         return {
             'attacker_elo':   new_att,
             'defender_elo':   new_def,
