@@ -138,3 +138,44 @@ class RedTeamSupervisor:
         stop = next_round > self.max_rounds
         return {'round_num': next_round, 'stop_flag': stop}
 
+    # ── Build and compile the LangGraph ──────────────────────────────
+    def _build_graph(self) -> StateGraph:
+        g = StateGraph(RedTeamState)
+
+        # Add all nodes
+        g.add_node('fetch_target',     self.node_fetch_target_info)
+        g.add_node('attacker_generate',self.node_attacker_generate)
+        g.add_node('query_target',     self.node_query_target)
+        g.add_node('evaluate',         self.node_evaluate)
+        g.add_node('update_scores',    self.node_update_scores)
+        g.add_node('defender_update',  self.node_defender_update)
+
+        # Set entry point — the first node that runs
+        g.set_entry_point('fetch_target')
+
+        # Linear edges: fetch → attack → query → evaluate → score → defend
+        g.add_edge('fetch_target',      'attacker_generate')
+        g.add_edge('attacker_generate', 'query_target')
+        g.add_edge('query_target',      'evaluate')
+        g.add_edge('evaluate',          'update_scores')
+        g.add_edge('update_scores',     'defender_update')
+
+        # Conditional edge: after defender update, either loop back or stop
+        g.add_conditional_edges(
+            'defender_update',
+            lambda state: END if state['stop_flag'] else 'attacker_generate',
+            {'attacker_generate': 'attacker_generate', END: END}
+        )
+
+        return g.compile()
+
+    def run(self):
+        """Start the self-play loop from the initial state."""
+        initial_state = RedTeamState(
+            round_num=1, system_prompt='',
+            attack_prompt=None, attack_type=None, target_response=None,
+            eval_verdict=None, eval_severity=None, violated_rule=None,
+            defender_caught=None, attacker_elo=1200.0, defender_elo=1200.0,
+            past_exploits=[], total_exploits=0, stop_flag=False
+        )
+        self.graph.invoke(initial_state)
