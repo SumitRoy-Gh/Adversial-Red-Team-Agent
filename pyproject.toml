@@ -1,0 +1,26 @@
+[project]
+name = "adversial-red-team-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "accelerate>=1.13.0",
+    "datasets>=4.8.5",
+    "fastapi>=0.136.3",
+    "groq>=0.37.1",
+    "httpx>=0.28.1",
+    "langchain>=1.3.2",
+    "langchain-groq>=1.1.2",
+    "langgraph>=1.2.2",
+    "matplotlib>=3.10.9",
+    "pandas>=3.0.3",
+    "peft>=0.19.1",
+    "plotly>=6.7.0",
+    "python-dotenv>=1.2.2",
+    "qdrant-client>=1.18.0",
+    "sentence-transformers>=5.5.1",
+    "streamlit>=1.57.0",
+    "transformers>=5.9.0",
+    "uvicorn>=0.48.0",
+]
