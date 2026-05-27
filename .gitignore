@@ -1,2 +1,22 @@
+# Local environment and storage
 .env
-qdrant_storage
+qdrant_storage/
+elo_scores.db
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE and system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

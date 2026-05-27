@@ -44,7 +44,7 @@ class RedTeamSupervisor:
     # ── NODE 1: fetch the target's system prompt ──────────────────────
     def node_fetch_target_info(self, state: RedTeamState) -> dict:
         """Called once at the start. Fetches target rules."""
-        r = httpx.get('http://localhost:8000/system-prompt')
+        r = httpx.get('http://localhost:8001/system-prompt')
         att_elo, def_elo = self.elo_tracker.get_current_elos()
         return {
             'system_prompt': r.json()['system_prompt'],
@@ -63,18 +63,18 @@ class RedTeamSupervisor:
             system_prompt=state['system_prompt'],
             past_attacks=past
         )
-        print(f"[Round {state['round_num']}] ATTACK ({attack['attack_type']}): "
-              f"{attack['attack_prompt'][:80]}...")
+        print(f"[Round {state['round_num']}] ATTACK ({attack.attack_type}): "
+              f"{attack.attack_prompt[:80]}...")
         return {
-            'attack_prompt': attack['attack_prompt'],
-            'attack_type':   attack['attack_type'],
+            'attack_prompt': attack.attack_prompt,
+            'attack_type':   attack.attack_type,
             'past_exploits': past,
         }
 
     # ── NODE 3: send attack to target app ─────────────────────────────
     def node_query_target(self, state: RedTeamState) -> dict:
         r = httpx.post(
-            'http://localhost:8000/query',
+            'http://localhost:8001/query',
             json={'prompt': state['attack_prompt']},
             timeout=30.0
         )
@@ -89,12 +89,12 @@ class RedTeamSupervisor:
             attack_prompt=state['attack_prompt'],
             response=state['target_response'],
         )
-        print(f"[Round {state['round_num']}] VERDICT: {eval_result['verdict']} ",
-              f"(severity={eval_result['severity']:.2f})")
+        print(f"[Round {state['round_num']}] VERDICT: {eval_result.verdict} ",
+              f"(severity={eval_result.severity:.2f})")
         return {
-            'eval_verdict':  eval_result['verdict'],
-            'eval_severity': eval_result['severity'],
-            'violated_rule': eval_result.get('violated_rule'),
+            'eval_verdict':  eval_result.verdict,
+            'eval_severity': eval_result.severity,
+            'violated_rule': eval_result.violated_rule,
         }
 
     # ── NODE 5: update ELO, store exploit if successful ───────────────

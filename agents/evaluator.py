@@ -31,19 +31,39 @@ Output valid JSON only.
 '''
 
 class ResponseEvaluator:
-    def __init__(self, model_name='llama-3.3-70b-versatile'):  # Stronger model for judging
+    def __init__(self, model_name=None):  # Stronger model for judging
+        if model_name is None:
+            import os
+            model_name = os.getenv('EVALUATOR_MODEL', 'llama-3.3-70b-versatile')
         self.llm    = ChatGroq(model=model_name, temperature=0.0)  # Deterministic judge
         self.parser = JsonOutputParser(pydantic_object=EvalOutput)
         self.prompt = ChatPromptTemplate.from_messages([
             ('system', EVALUATOR_SYSTEM),
-            ('human', 'Give your verdict as valid JSON.')
+            ('human', 'Give your verdict as valid JSON.\n\n{format_instructions}')
         ])
         self.chain  = self.prompt | self.llm | self.parser
 
     def evaluate(self, system_prompt, attack_prompt, response) -> EvalOutput:
-        return self.chain.invoke({
-            'system_prompt': system_prompt,
-            'attack_prompt': attack_prompt,
-            'response':      response,
-        })
+        for attempt in range(3):
+            try:
+                result = self.chain.invoke({
+                    'system_prompt': system_prompt,
+                    'attack_prompt': attack_prompt,
+                    'response':      response,
+                    'format_instructions': self.parser.get_format_instructions(),
+                })
+                if isinstance(result, dict):
+                    return EvalOutput.model_validate(result)
+                elif isinstance(result, EvalOutput):
+                    return result
+            except Exception as e:
+                print(f"Attempt {attempt + 1} for ResponseEvaluator failed: {e}")
+
+        # Fallback if all attempts fail
+        return EvalOutput(
+            verdict="DEFENDED",
+            violated_rule=None,
+            severity=0.0,
+            reasoning="Fallback verdict due to evaluation parser failures."
+        )
 

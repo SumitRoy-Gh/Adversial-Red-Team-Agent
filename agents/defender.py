@@ -33,26 +33,49 @@ Output valid JSON.
 class DefenderAgent:
     INITIAL_STRATEGY = 'Monitor for direct rule violations and obvious jailbreak patterns.'
 
-    def __init__(self, model_name='llama-3.1-8b-instant'):
+    def __init__(self, model_name=None):
+        if model_name is None:
+            import os
+            model_name = os.getenv('DEFENDER_MODEL', 'llama-3.1-8b-instant')
         self.llm      = ChatGroq(model=model_name, temperature=0.2)
         self.parser   = JsonOutputParser(pydantic_object=DefenderOutput)
         self.prompt   = ChatPromptTemplate.from_messages([
             ('system', DEFENDER_SYSTEM),
-            ('human', 'Update your strategy. Output valid JSON.')
+            ('human', 'Update your strategy.\n\n{format_instructions}')
         ])
         self.chain    = self.prompt | self.llm | self.parser
         self.strategy = self.INITIAL_STRATEGY
 
     def update(self, attack_prompt, attack_type,
                verdict, violated_rule) -> DefenderOutput:
-        result = self.chain.invoke({
-            'current_strategy': self.strategy,
-            'attack_prompt':    attack_prompt,
-            'attack_type':      attack_type,
-            'verdict':          verdict,
-            'violated_rule':    violated_rule or 'None',
-        })
-        # Persist the updated strategy for next round
-        self.strategy = result['updated_strategy']
-        return result
+        for attempt in range(3):
+            try:
+                result = self.chain.invoke({
+                    'current_strategy': self.strategy,
+                    'attack_prompt':    attack_prompt,
+                    'attack_type':      attack_type,
+                    'verdict':          verdict,
+                    'violated_rule':    violated_rule or 'None',
+                    'format_instructions': self.parser.get_format_instructions(),
+                })
+                validated = None
+                if isinstance(result, dict):
+                    validated = DefenderOutput.model_validate(result)
+                elif isinstance(result, DefenderOutput):
+                    validated = result
+
+                if validated:
+                    # Persist the updated strategy for next round
+                    self.strategy = validated.updated_strategy
+                    return validated
+            except Exception as e:
+                print(f"Attempt {attempt + 1} for DefenderAgent failed: {e}")
+
+        # Fallback if all attempts fail
+        fallback = DefenderOutput(
+            caught=False,
+            updated_strategy=self.strategy,
+            suggested_rule_patch="Keep monitoring for any potential rule bypass."
+        )
+        return fallback
 
