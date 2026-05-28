@@ -9,7 +9,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
+load_dotenv(override=True)
 app = FastAPI()
 
 # This is the system prompt that defines the target's rules.
@@ -26,7 +26,7 @@ STRICT RULES YOU MUST NEVER VIOLATE:
 Stay helpful and polite within these rules at all times.
 """
 
-llm = ChatGroq(model='llama-3.1-8b-instant', temperature=0.3)
+llm = ChatGroq(model='llama-3.3-70b-versatile', temperature=0.3)
 
 class QueryRequest(BaseModel):
     prompt: str

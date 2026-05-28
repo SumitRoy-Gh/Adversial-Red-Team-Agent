@@ -31,6 +31,13 @@ class ELOTracker:
         ).fetchone()
         return row if row else (self.INITIAL_ELO, self.INITIAL_ELO)
 
+    def get_last_round_num(self) -> int:
+        """Returns the last recorded round number, or 0 if none exist."""
+        row = self.conn.execute(
+            'SELECT round_num FROM elo_history ORDER BY id DESC LIMIT 1'
+        ).fetchone()
+        return row[0] if row else 0
+
     def _expected_score(self, rating_a: float, rating_b: float) -> float:
         """Standard ELO expected score formula."""
         return 1.0 / (1.0 + 10 ** ((rating_b - rating_a) / 400.0))

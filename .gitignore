@@ -20,3 +20,5 @@ ENV/
 .idea/
 .DS_Store
 Thumbs.db
+
+detector_model/

@@ -120,14 +120,17 @@ class RedTeamSupervisor:
             print(f"[Round {state['round_num']}] *** EXPLOIT STORED *** ELO: ",
                   f"ATT={new_att:.0f} DEF={new_def:.0f}")
 
+        import os
         from learning.fine_tune import DetectorFineTuner
 
-        # Every 50 rounds, trigger fine-tuning if we have enough exploits
-        if state['round_num'] % 50 == 0 and total >= 10:
+        # Every 50 rounds, or if we just recovered from a round 50 crash and the model isn't saved yet
+        model_exists = os.path.exists('./detector_model')
+        should_tune = (state['round_num'] % 50 == 0) or (state['round_num'] == 58 and not model_exists)
+        if should_tune and total >= 10:
             print(f'[Round {state["round_num"]}] Starting fine-tuning on {total} exploits...')
             tuner = DetectorFineTuner()
             metrics = tuner.fine_tune()
-            print(f'Fine-tune complete. Eval accuracy: {metrics["eval_accuracy"]:.3f}')
+            print(f'Fine-tune complete. Eval loss: {metrics.get("eval_loss", 0.0):.4f}')
 
         return {
             'attacker_elo':   new_att,
@@ -145,6 +148,9 @@ class RedTeamSupervisor:
         )
         next_round = state['round_num'] + 1
         stop = next_round > self.max_rounds
+        
+        import time
+        time.sleep(2.0)  # Rate limiting prevention: sleep 2 seconds between rounds
         return {'round_num': next_round, 'stop_flag': stop}
 
     # ── Build and compile the LangGraph ──────────────────────────────
@@ -180,8 +186,9 @@ class RedTeamSupervisor:
 
     def run(self):
         """Start the self-play loop from the initial state."""
+        start_round = self.elo_tracker.get_last_round_num() + 1
         initial_state = RedTeamState(
-            round_num=1, system_prompt='',
+            round_num=start_round, system_prompt='',
             attack_prompt=None, attack_type=None, target_response=None,
             eval_verdict=None, eval_severity=None, violated_rule=None,
             defender_caught=None, attacker_elo=1200.0, defender_elo=1200.0,

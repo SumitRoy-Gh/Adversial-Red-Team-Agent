@@ -1,6 +1,6 @@
 import torch  # Must be imported first on Windows to avoid DLL load/initialization conflicts with CUDA/sentence_transformers
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 from graph.supervisor import RedTeamSupervisor
 
